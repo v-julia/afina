@@ -8,6 +8,9 @@
 
 #include <afina/Storage.h>
 
+
+#include <list>
+
 namespace Afina {
 namespace Backend {
 
@@ -21,7 +24,14 @@ public:
 
     ~SimpleLRU() {
         _lru_index.clear();
+        if( _lru_head ){
+        lru_node* lru;
+        while ( (lru=tail->prev) != nullptr ) {
+            lru->next.release();
+            tail = lru;
+        }
         _lru_head.reset(); // TODO: Here is stack overflow
+        }
     }
 
     // Implements Afina::Storage interface
@@ -44,19 +54,24 @@ private:
     using lru_node = struct lru_node {
         std::string key;
         std::string value;
-        std::unique_ptr<lru_node> prev;
-        std::unique_ptr<lru_node> next;
+        lru_node* prev;
+        std::unique_ptr<lru_node> next; 
     };
+    // Здесь такой вопрос:  не понятно, как применить одновременно unique_ptr для двунаправленного списка
+
 
     // Maximum number of bytes could be stored in this cache.
     // i.e all (keys+values) must be less the _max_size
     std::size_t _max_size;
+    std::size_t sz_current = 0;
 
     // Main storage of lru_nodes, elements in this list ordered descending by "freshness": in the head
     // element that wasn't used for longest time.
     //
     // List owns all nodes
     std::unique_ptr<lru_node> _lru_head;
+    lru_node* tail=nullptr;
+
 
     // Index of nodes from list above, allows fast random access to elements by lru_node#key
     std::map<std::reference_wrapper<std::string>, std::reference_wrapper<lru_node>, std::less<std::string>> _lru_index;
