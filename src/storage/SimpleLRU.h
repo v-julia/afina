@@ -27,7 +27,7 @@ public:
         if( _lru_head ){
         lru_node* lru;
         while ( (lru=tail->prev) != nullptr ) {
-            lru->next.release();
+            lru->next.reset();
             tail = lru;
         }
         _lru_head.reset(); // TODO: Here is stack overflow
