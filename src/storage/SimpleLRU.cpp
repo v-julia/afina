@@ -18,8 +18,9 @@ namespace Afina {
             // вариант 1: добавление новой записи с этим ключом
             // вариант 2: замена значения, если запись с таким ключом уже есть
 
-            std::map<std::reference_wrapper<std::string>, std::reference_wrapper<lru_node>, std::less<std::string>>::iterator it;
-            it = _lru_index.find(const_cast<std::string&>( key ));
+            //std::map<std::reference_wrapper<std::string>, std::reference_wrapper<lru_node>, std::less<std::string>>::iterator it;
+            auto it = _lru_index.find(const_cast<std::string&>( key ));
+            //auto it = _lru_index.find(std::ref( key ));
 
             if ( it == _lru_index.end() ) {
                 // вариант 1: нет записи с key => добавить новый key-value
@@ -54,7 +55,7 @@ namespace Afina {
                 // вариант 2: записи с key есть => заменить новым value
                 // аналогично - вначале освободить место
                 // вычислить: сколько потребуется свободного места
-                sz_new_add -= it->second.get().value.size();
+                sz_new_add -= it->second.get().key.size();
                 std::unique_ptr<lru_node>* node_for_remove = &_lru_head;
                 while ( sz_new_add > ( _max_size - sz_current ) ) {
                     if ( node_for_remove->get()->key != key ) {
@@ -175,7 +176,7 @@ namespace Afina {
 
             // из хранилища
             if ( _lru_index.size() == 0 ) {
-                _lru_head.release();
+                _lru_head.reset();
                 tail = nullptr;
                 sz_current = 0;
             }
@@ -186,7 +187,7 @@ namespace Afina {
                 }
                 else {
                     lru_node* lru = node_for_delete.prev;
-                    lru->next.swap(node_for_delete.next);
+                    lru->next=std::move(node_for_delete.next);
                     if ( lru->next ) {
                         lru->next->prev = lru;
                     }
