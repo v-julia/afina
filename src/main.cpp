@@ -39,9 +39,10 @@ public:
         console.color = true;
 
         Logging::Logger &logger = logConfig->loggers["root"];
-        logger.level = Logging::Logger::Level::WARNING;
+        //logger.level = Logging::Logger::Level::WARNING;
+        logger.level = Logging::Logger::Level::TRACE; // можно позволю себе изменить это для отладки?
         logger.appenders.push_back("console");
-        logger.format = "[%H:%M:%S %z] [thread %t] [%n] [%l] %v";
+        logger.format = "[%H:%M:%S.%F] [thread %t] [%n] [%l] %v"; // можно позволю себе изменить это для отладки?
         logService.reset(new Logging::ServiceImpl(logConfig));
 
         // Step 1: configure storage
@@ -67,7 +68,9 @@ public:
         if (network_type == "st_block") {
             server = std::make_shared<Afina::Network::STblocking::ServerImpl>(storage, logService);
         } else if (network_type == "mt_block") {
+            
             server = std::make_shared<Afina::Network::MTblocking::ServerImpl>(storage, logService);
+            
         } else if (network_type == "st_nonblock") {
             server = std::make_shared<Afina::Network::STnonblock::ServerImpl>(storage, logService);
         } else if (network_type == "mt_nonblock") {
@@ -75,7 +78,9 @@ public:
         } else {
             throw std::runtime_error("Unknown network type");
         }
-    }
+        
+        
+   }
 
     // Start services in correct order
     void Start() {
