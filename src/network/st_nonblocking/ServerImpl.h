@@ -23,8 +23,8 @@ class Worker;
  */
 class ServerImpl : public Server {
 public:
-    ServerImpl(std::shared_ptr<Afina::Storage> ps, std::shared_ptr<Logging::Service> pl);
-    ~ServerImpl();
+    ServerImpl(std::shared_ptr<Afina::Storage> ps, std::shared_ptr<Logging::Service> pl): Server(ps, pl), pstorage(ps){};
+    ~ServerImpl(){};
 
     // See Server.h
     void Start(uint16_t port, uint32_t acceptors, uint32_t workers) override;
@@ -42,7 +42,7 @@ protected:
 private:
     // logger to use
     std::shared_ptr<spdlog::logger> _logger;
-
+    std::shared_ptr<Afina::Storage> pstorage;
     // Port to listen for new connections, permits access only from
     // inside of accept_thread
     // Read-only
