@@ -37,7 +37,7 @@ namespace Afina {
             // LRU cache node
             using lru_node = struct lru_node
             {
-                std::string key;
+                const std::string key;
                 std::string value;
                 lru_node* prev;
                 std::unique_ptr<lru_node> next;
@@ -65,13 +65,14 @@ namespace Afina {
 
             // Index of nodes from list above, allows fast random access to elements by lru_node#key
             // !здесь по отношению к исходному коду изменено c <std::string> на <const std::string>
-            std::map<std::reference_wrapper<const std::string>, std::reference_wrapper<lru_node>, std::less<std::string>> _lru_index;
+            using map_index = std::map<std::reference_wrapper<const std::string>, std::reference_wrapper<lru_node>, std::less<const std::string>>;
+            map_index _lru_index;
 
             // !добавить вспомогательные функции для того, чтобы большие участки кода не дублировались
 
-            bool free_up_storage_space(std::size_t size_required);
-
             void insert_new_node_to_tail(const std::string& key, const std::string& value);
+            
+            void modyfy_value_of_existing_node(map_index::iterator& it, const std::string& new_value);
 
             void move_node_to_tail(lru_node& node);
 
