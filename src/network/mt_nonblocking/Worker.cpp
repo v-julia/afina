@@ -13,7 +13,6 @@
 
 #include <afina/logging/Service.h>
 
-#include "Connection.h"
 #include "Utils.h"
 
 namespace Afina {
@@ -24,6 +23,8 @@ namespace MTnonblock {
 Worker::Worker(std::shared_ptr<Afina::Storage> ps, std::shared_ptr<Afina::Logging::Service> pl)
     : _pStorage(ps), _pLogging(pl), isRunning(false), _epoll_fd(-1) {
     // TODO: implementation here
+    // Похоже, что _pStorage здесь не используется, а только в Connection
+    // Тогда блокировки не нужны, разве что могли бы _epoll_fd, но он (epoll) и так thread-safe    
 }
 
 // See Worker.h
