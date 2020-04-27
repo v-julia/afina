@@ -44,9 +44,11 @@ void SimpleLRU::modyfy_value_of_existing_node(map_index::iterator& it, const std
 {
     move_node_to_tail(it->second.get());
     while ( sz_current - it->second.get().value.size() + new_value.size() > _max_size ) remove_node(*_lru_head.get());
+	
+	sz_current -= it->second.get().value.size();
+	sz_current += new_value.size();
+
     it->second.get().value = new_value;
-    sz_current -= it->second.get().value.size();
-    sz_current += new_value.size();
 }
 
 
