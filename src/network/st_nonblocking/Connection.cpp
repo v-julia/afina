@@ -51,7 +51,7 @@ void Connection::DoRead()
 // - execute each command
 // - send response
     try {
-        while ( ( readed_bytes = read(_socket, client_buffer+readed_bytes, sizeof(client_buffer) - readed_bytes) ) > 0 ) {
+        while ( ( readed_bytes += read(_socket, client_buffer+readed_bytes, sizeof(client_buffer) - readed_bytes) ) > 0 ) {
             plogger->debug("Got {} bytes from socket", readed_bytes);
 
             // Single block of data readed from the socket could trigger inside actions a multiple times,
