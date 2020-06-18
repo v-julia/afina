@@ -101,6 +101,7 @@ void Connection::DoRead()
                     plogger->debug("Start command execution");
 
                     std::string result;
+                    if(argument_for_command.size()>1) argument_for_command.resize(argument_for_command.size()-2);
                     command_to_execute->Execute(*pstorage, argument_for_command, result);
                     bool is_epmty=results.empty();
                     result += "\r\n";
