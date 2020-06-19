@@ -29,7 +29,7 @@ void Connection::Start()
 void Connection::OnError()
 {
     plogger->error("Error in Connection: client_socket={}\n\n", _socket);
-    std::unique_lock<std::mutex> lock(connection_mutex);
+    //std::unique_lock<std::mutex> lock(connection_mutex);
     OnClose();
 }
 
@@ -38,24 +38,26 @@ void Connection::OnClose()
 {
     plogger->info("Close Connection: client_socket={}\n", _socket);
     std::unique_lock<std::mutex> lock(connection_mutex);
-    close(_socket);
+    //close(_socket);
     is_alive = false;
 }
 
 // See Connection.h
 void Connection::DoRead()
 {
+    plogger->debug("Connection begin read from socket {} \n", _socket);
     std::unique_lock<std::mutex> lock(connection_mutex);
     try {
-        while ( ( readed_bytes = read(_socket, client_buffer+readed_bytes, sizeof(client_buffer) - readed_bytes) ) > 0 ) {
-            plogger->debug("Got {} bytes from socket", readed_bytes);
-
+        int current_bytes_readed=0;
+        while ( ( current_bytes_readed = read(_socket, client_buffer+readed_bytes, sizeof(client_buffer) - readed_bytes) ) > 0 ) {
+            plogger->debug("Got {} bytes from socket", current_bytes_readed);
+            readed_bytes+=current_bytes_readed;
             // Single block of data readed from the socket could trigger inside actions a multiple times,
             // for example:
             // - read#0: [<command1 start>]
             // - read#1: [<command1 end> <argument> <command2> <argument for command 2> <command3> ... ]
             while ( readed_bytes > 0 ) {
-                plogger->debug("Process {} bytes", readed_bytes);
+                plogger->debug("Process {} bytes (socket {})", readed_bytes,_socket);
                 // There is no command yet
                 if ( !command_to_execute ) {
                     std::size_t parsed = 0;
@@ -82,7 +84,7 @@ void Connection::DoRead()
 
                 // There is command, but we still wait for argument to arrive...
                 if ( command_to_execute && arg_remains > 0 ) {
-                    plogger->debug("Fill argument: {} bytes of {}", readed_bytes, arg_remains);
+                    plogger->debug("Fill argument: {} bytes of {} (socket {})", readed_bytes, arg_remains,_socket);
                     // There is some parsed command, and now we are reading argument
                     std::size_t to_read = std::min(arg_remains, std::size_t(readed_bytes));
                     argument_for_command.append(client_buffer, to_read);
@@ -92,11 +94,12 @@ void Connection::DoRead()
                     readed_bytes -= to_read;
                 }
 
-                // Thre is command & argument - RUN!
+                // There is command & argument - RUN!
                 if ( command_to_execute && arg_remains == 0 ) {
                     plogger->debug("Start command execution");
 
                     std::string result;
+                    if(argument_for_command.size()>1) argument_for_command.resize(argument_for_command.size()-2);
                     command_to_execute->Execute(*pstorage, argument_for_command, result);
                     bool is_epmty=results.empty();
                     result += "\r\n";
@@ -108,9 +111,9 @@ void Connection::DoRead()
                     }
                     // Send response
                     // это будет делать DoWrite
-//                     if (send(client_socket, result.data(), result.size(), 0) <= 0) {
-//                         throw std::runtime_error("Failed to send response");
-//                     }
+                    //if (send(client_socket, result.data(), result.size(), 0) <= 0) {
+                    //    throw std::runtime_error("Failed to send response");
+                    //}
 
                     // Prepare for the next command
                     command_to_execute.reset();
@@ -121,8 +124,9 @@ void Connection::DoRead()
         }
 
         if ( readed_bytes == 0 ) {
-            plogger->debug("Connection closed: client_socket={}",_socket);
+            plogger->debug("This Connection must to be closed: client_socket={}",_socket);
         } else if (errno != EAGAIN && errno != EWOULDBLOCK){
+            plogger->debug("Parse complete but readed_bytes={} >0, this is runtime error",readed_bytes);
             throw std::runtime_error(std::string(strerror(errno)));
         }
     }
@@ -133,7 +137,7 @@ void Connection::DoRead()
 
     // We are done with this connection
     // в отличие от st_blocking, close не здесь наверное делать
-    //close(client_socket);
+    //close(_socket);
 
 }
 

@@ -73,7 +73,7 @@ private:
     std::vector<std::string> results;
     
     // для ДЗ №5
-    mutable std::mutex connection_mutex; // почему-то mutable помогает избавиться от ошибки в bool isAlive() const
+    mutable std::mutex connection_mutex; // mutable помогает избавиться от ошибки в bool isAlive() const
     
     // ----------------------
 };

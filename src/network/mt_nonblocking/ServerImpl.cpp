@@ -198,13 +198,15 @@ void ServerImpl::OnRun() {
                 }
 
                 // Register the new FD to be monitored by epoll.
-                Connection *pc = new Connection(infd,pstorage,_logger);
+                Connection *pc = new Connection(infd, pstorage, _logger);
+                _logger->debug("now we created new connection object (for socket {})", infd);
                 if (pc == nullptr) {
                     throw std::runtime_error("Failed to allocate connection");
                 }
 
                 // Register connection in worker's epoll
-                pc->Start();
+                 _logger->debug("want to start this connection object (for socket {})", pc->_socket);
+               pc->Start();
                 if (pc->isAlive()) {
                     pc->_event.events |= EPOLLONESHOT;
                     int epoll_ctl_retval;
