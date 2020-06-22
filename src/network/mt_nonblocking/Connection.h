@@ -36,8 +36,7 @@ public:
     }
 
     inline bool isAlive() const { 
-        std::unique_lock<std::mutex> lock(connection_mutex);
-        return is_alive; 
+        return is_alive.load(); 
     }
 
     void Start();
@@ -57,7 +56,7 @@ private:
     
     std::shared_ptr<Afina::Storage> pstorage;
     std::shared_ptr<spdlog::logger> plogger;
-    bool is_alive;
+    std::atomic<bool> is_alive;
     
     // в отличие от st_blocking эти переменные должны быть здесь, потому, что они инициализируются в момент создания
     // подключения, в процессе работы должны сохранять значения, а удаляются при разрыве соединения

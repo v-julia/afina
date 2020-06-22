@@ -19,7 +19,7 @@ void Connection::Start()
     argument_for_command.resize(0);
     command_to_execute.reset();
     parser.Reset();
-    is_alive = true;
+    is_alive.store(true);
     written_bytes = 0;
     results.clear();
     _event.data.ptr = this;
@@ -37,9 +37,9 @@ void Connection::OnError()
 void Connection::OnClose()
 {
     plogger->info("Close Connection: client_socket={}\n", _socket);
-    std::unique_lock<std::mutex> lock(connection_mutex);
+    //std::unique_lock<std::mutex> lock(connection_mutex);
     //close(_socket);
-    is_alive = false;
+    is_alive.store(false);
 }
 
 // See Connection.h
@@ -132,7 +132,7 @@ void Connection::DoRead()
     }
     catch ( std::runtime_error& ex ) {
         plogger->error("Failed to process connection on descriptor {}: {}", _socket, ex.what());
-        is_alive=false;
+        is_alive.store(false);
     }
 
     // We are done with this connection
@@ -182,7 +182,7 @@ void Connection::DoWrite() {
         }
     } catch (std::runtime_error &ex) {
         plogger->error("Failed to writing to connection on descriptor {}: {} \n", _socket, ex.what());
-        is_alive = false;
+        is_alive.store(false);
     }
 }
 
