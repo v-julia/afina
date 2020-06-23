@@ -136,8 +136,8 @@ void Connection::DoRead()
     }
 
     // We are done with this connection
-    // в отличие от st_blocking, close не здесь наверное делать
-    //close(_socket);
+
+    close(_socket);
 
 }
 
@@ -179,10 +179,14 @@ void Connection::DoWrite() {
         if (results.empty()) {
             _event.events ^= EPOLLOUT;
             _event.events |= EPOLLIN;
+            is_alive.store(false);
+            close(_socket);
+
         }
     } catch (std::runtime_error &ex) {
         plogger->error("Failed to writing to connection on descriptor {}: {} \n", _socket, ex.what());
         is_alive.store(false);
+        close(_socket);
     }
 }
 
