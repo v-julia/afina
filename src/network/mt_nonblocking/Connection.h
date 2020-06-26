@@ -48,18 +48,22 @@ protected:
     void DoWrite();
 
 private:
+                        
     friend class ServerImpl;
     friend class Worker;
 
     int _socket;
     struct epoll_event _event;
     
+                      
+                                            
+
+                                             
+
     std::shared_ptr<Afina::Storage> pstorage;
     std::shared_ptr<spdlog::logger> plogger;
     std::atomic<bool> is_alive;
     
-    // в отличие от st_blocking эти переменные должны быть здесь, потому, что они инициализируются в момент создания
-    // подключения, в процессе работы должны сохранять значения, а удаляются при разрыве соединения
     std::size_t arg_remains;
     Protocol::Parser parser;
     std::string argument_for_command;
@@ -69,10 +73,11 @@ private:
     int readed_bytes;
     char client_buffer[4096];
     int written_bytes;
+                             
     std::vector<std::string> results;
     
     // для ДЗ №5
-    mutable std::mutex connection_mutex; // mutable помогает избавиться от ошибки в bool isAlive() const
+    std::mutex connection_mutex;
     
     // ----------------------
 };
