@@ -42,6 +42,7 @@ protected:
 private:
     // logger to use
     std::shared_ptr<spdlog::logger> _logger;
+    std::shared_ptr<Afina::Storage> pstorage;
 
     // Port to listen for new connections, permits access only from
     // inside of accept_thread

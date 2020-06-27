@@ -66,9 +66,10 @@ public:
 
         if (network_type == "st_block") {
             server = std::make_shared<Afina::Network::STblocking::ServerImpl>(storage, logService);
+           
         } else if (network_type == "mt_block") {
             server = std::make_shared<Afina::Network::MTblocking::ServerImpl>(storage, logService);
-        } else if (network_type == "st_nonblock") {
+         } else if (network_type == "st_nonblock") {
             server = std::make_shared<Afina::Network::STnonblock::ServerImpl>(storage, logService);
         } else if (network_type == "mt_nonblock") {
             server = std::make_shared<Afina::Network::MTnonblock::ServerImpl>(storage, logService);

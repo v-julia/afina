@@ -30,7 +30,7 @@ namespace Network {
 namespace MTnonblock {
 
 // See Server.h
-ServerImpl::ServerImpl(std::shared_ptr<Afina::Storage> ps, std::shared_ptr<Logging::Service> pl) : Server(ps, pl) {}
+ServerImpl::ServerImpl(std::shared_ptr<Afina::Storage> ps, std::shared_ptr<Logging::Service> pl) : Server(ps, pl), pstorage(ps) {}
 
 // See Server.h
 ServerImpl::~ServerImpl() {}
@@ -41,9 +41,10 @@ void ServerImpl::Start(uint16_t port, uint32_t n_acceptors, uint32_t n_workers) 
     _logger->info("Start mt_nonblocking network service");
 
     sigset_t sig_mask;
-    sigemptyset(&sig_mask);
-    sigaddset(&sig_mask, SIGPIPE);
-    if (pthread_sigmask(SIG_BLOCK, &sig_mask, NULL) != 0) {
+    sigemptyset(&sig_mask);         //initialize and empty a signal set
+    sigaddset(&sig_mask, SIGPIPE);  // add signal SIGPIPE (сигнал, посылаемый процессу при записи в соединение при отсутствии или обрыве соединения с другой стороной)
+    
+    if (pthread_sigmask(SIG_BLOCK, &sig_mask, NULL) != 0) { // добавить сигнал SIGPIPE к остальным, которые уже есть
         throw std::runtime_error("Unable to mask SIGPIPE");
     }
 
@@ -75,14 +76,17 @@ void ServerImpl::Start(uint16_t port, uint32_t n_acceptors, uint32_t n_workers) 
         close(_server_socket);
         throw std::runtime_error("Socket listen() failed: " + std::string(strerror(errno)));
     }
+    _logger->info("service socket (fd={}) created and listen",_server_socket);
 
     // Start IO workers
     _data_epoll_fd = epoll_create1(0);
+    _logger->info("data_epoll cteated (fd={})",_data_epoll_fd);
     if (_data_epoll_fd == -1) {
         throw std::runtime_error("Failed to create epoll file descriptor: " + std::string(strerror(errno)));
     }
 
     _event_fd = eventfd(0, EFD_NONBLOCK);
+    _logger->info("event cteated (fd={})",_event_fd);
     if (_event_fd == -1) {
         throw std::runtime_error("Failed to create epoll file descriptor: " + std::string(strerror(errno)));
     }
@@ -139,6 +143,7 @@ void ServerImpl::OnRun() {
     if (acceptor_epoll == -1) {
         throw std::runtime_error("Failed to create epoll file descriptor: " + std::string(strerror(errno)));
     }
+    _logger->info("acceptor created epoll (fd={})", acceptor_epoll);
 
     struct epoll_event event;
     event.events = EPOLLIN | EPOLLEXCLUSIVE;
@@ -193,13 +198,15 @@ void ServerImpl::OnRun() {
                 }
 
                 // Register the new FD to be monitored by epoll.
-                Connection *pc = new Connection(infd);
+                Connection *pc = new Connection(infd, pstorage, _logger);
+                _logger->debug("now we created new connection object (for socket {})", infd);
                 if (pc == nullptr) {
                     throw std::runtime_error("Failed to allocate connection");
                 }
 
                 // Register connection in worker's epoll
-                pc->Start();
+                 _logger->debug("want to start this connection object (for socket {})", pc->_socket);
+               pc->Start();
                 if (pc->isAlive()) {
                     pc->_event.events |= EPOLLONESHOT;
                     int epoll_ctl_retval;

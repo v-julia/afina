@@ -13,7 +13,7 @@
 
 #include <afina/logging/Service.h>
 
-#include "Connection.h"
+                       
 #include "Utils.h"
 
 namespace Afina {
@@ -24,6 +24,8 @@ namespace MTnonblock {
 Worker::Worker(std::shared_ptr<Afina::Storage> ps, std::shared_ptr<Afina::Logging::Service> pl)
     : _pStorage(ps), _pLogging(pl), isRunning(false), _epoll_fd(-1) {
     // TODO: implementation here
+    // Похоже, что _pStorage здесь не используется, а только в Connection
+    // Тогда блокировки не нужны, разве что могли бы _epoll_fd, но он (epoll) и так thread-safe    
 }
 
 // See Worker.h
@@ -117,6 +119,7 @@ void Worker::OnRun() {
                 if ((epoll_ctl_retval = epoll_ctl(_epoll_fd, EPOLL_CTL_MOD, pconn->_socket, &pconn->_event))) {
                     _logger->debug("epoll_ctl failed during connection rearm: error {}", epoll_ctl_retval);
                     pconn->OnError();
+                    close(pconn->_socket);                     
                     delete pconn;
                 }
             }
@@ -125,6 +128,7 @@ void Worker::OnRun() {
                 if (epoll_ctl(_epoll_fd, EPOLL_CTL_DEL, pconn->_socket, &pconn->_event)) {
                     std::cerr << "Failed to delete connection!" << std::endl;
                 }
+                close(pconn->_socket);                      
                 delete pconn;
             }
         }
