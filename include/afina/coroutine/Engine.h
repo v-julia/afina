@@ -29,7 +29,7 @@ private:
         char *Hight = nullptr;
 
         // coroutine stack copy buffer
-        std::tuple<char *, uint32_t> Stack = std::make_tuple(nullptr, 0);
+        std::tuple<char *, std::size_t> Stack = std::make_tuple(nullptr, 0);
 
         // Saved coroutine context (registers)
         jmp_buf Environment;
@@ -38,6 +38,7 @@ private:
         struct context *prev = nullptr;
         struct context *next = nullptr;
     } context;
+
 
     /**
      * Where coroutines stack begins
@@ -79,7 +80,16 @@ public:
     Engine() : StackBottom(0), cur_routine(nullptr), alive(nullptr) {}
     Engine(Engine &&) = delete;
     Engine(const Engine &) = delete;
-
+    ~Engine(){
+       context* any_context = alive;
+       while ( any_context != nullptr ) {
+            alive=any_context->next;
+            alive->prev=nullptr;
+            delete std::get<0>(any_context->Stack);
+            delete any_context;
+            any_context = alive;
+       }
+     }
     /**
      * Gives up current routine execution and let engine to schedule other one. It is not defined when
      * routine will get execution back, for example if there are no other coroutines then executing could
@@ -117,7 +127,6 @@ public:
         // Start routine execution
         void *pc = run(main, std::forward<Ta>(args)...);
         idle_ctx = new context();
-
         if (setjmp(idle_ctx->Environment) > 0) {
             // Here: correct finish of the coroutine section
             yield();
