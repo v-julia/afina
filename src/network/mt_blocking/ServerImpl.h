@@ -4,6 +4,11 @@
 #include <atomic>
 #include <thread>
 
+// добавлено:
+#include <mutex>
+#include <condition_variable>
+// ---
+
 #include <afina/network/Server.h>
 
 namespace spdlog {
@@ -52,6 +57,25 @@ private:
 
     // Thread to run network on
     std::thread _thread;
+    
+    
+    
+    // добавить новые переменные и 
+    // функцию обработки команды (как в st_block)
+    
+    uint32_t max_workers_count; // максимальное к-во потоков, определяется из Start
+    
+    uint32_t cur_workers_count; // сколько потоков сейчас
+    
+    std::mutex workers_mutex; // мютекс для потоков
+    
+    std::condition_variable workers_cv;
+    
+    // функция обработки
+    void st_OnRun(int client_socket);
+
+    
+    
 };
 
 } // namespace MTblocking
