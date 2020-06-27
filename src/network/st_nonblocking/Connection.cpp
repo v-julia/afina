@@ -12,6 +12,7 @@ namespace STnonblock {
 void Connection::Start()
 {
     plogger->info("Start new Connection: client_socket={}\n", _socket);
+                                                        
     readed_bytes = 0;
     arg_remains = 0;
     _event.events = EPOLLIN | EPOLLPRI | EPOLLRDHUP;
@@ -29,6 +30,7 @@ void Connection::OnError()
 {
     plogger->error("Error in Connection: client_socket={}\n\n", _socket);
     OnClose();
+                          
 }
 
 // See Connection.h
@@ -36,6 +38,8 @@ void Connection::OnClose()
 {
     close(_socket);
     plogger->info("Close Connection: client_socket={}\n", _socket);
+                                                        
+    
     is_alive = false;
 }
 
@@ -51,10 +55,13 @@ void Connection::DoRead()
 // - execute each command
 // - send response
     try {
-        int current_bytes_readed=0;
-        while ( ( current_bytes_readed += read(_socket, client_buffer+readed_bytes, sizeof(client_buffer) - readed_bytes) ) > 0 ) {
-            plogger->debug("Got {} bytes from socket (socket {})", readed_bytes,_socket);
+        int current_bytes_readed=-1;        
+        while ( 
+        is_alive && 
+        (( current_bytes_readed = read(_socket, client_buffer+readed_bytes, sizeof(client_buffer) - readed_bytes) ) > 0) ) {
 
+                                                                             
+                                               
             // Single block of data readed from the socket could trigger inside actions a multiple times,
             // for example:
             // - read#0: [<command1 start>]
@@ -64,6 +71,7 @@ void Connection::DoRead()
                 // There is no command yet
                 if ( !command_to_execute ) {
                     std::size_t parsed = 0;
+                    try {                                                          
                     if ( parser.Parse(client_buffer, readed_bytes, parsed) ) {
                         // There is no command to be launched, continue to parse input stream
                         // Here we are, current chunk finished some command, process it
@@ -73,6 +81,11 @@ void Connection::DoRead()
                             arg_remains += 2;
                         }
                     }
+                    } catch (std::runtime_error &ex) {
+                        results.push_back("(?^u:ERROR)");
+                        _event.events = EPOLLIN | EPOLLRDHUP | EPOLLERR | EPOLLET | EPOLLOUT;
+                        throw std::runtime_error(ex.what());
+                    }                                   
 
                     // Parsed might fails to consume any bytes from input stream. In real life that could happens,
                     // for example, because we are working with UTF-16 chars and only 1 byte left in stream
@@ -95,22 +108,26 @@ void Connection::DoRead()
                     std::memmove(client_buffer, client_buffer + to_read, readed_bytes - to_read);
                     arg_remains -= to_read;
                     readed_bytes -= to_read;
+                                                
                 }
 
-                // Thre is command & argument - RUN!
+                // There is command & argument - RUN!
                 if ( command_to_execute && arg_remains == 0 ) {
                     plogger->debug("Start command execution");
 
+                                                                                         
+
                     std::string result;
-                    if(argument_for_command.size()>1) argument_for_command.resize(argument_for_command.size()-2);
+                    if(argument_for_command.size()>1) argument_for_command.resize(argument_for_command.size()-2);                                                                    
                     command_to_execute->Execute(*pstorage, argument_for_command, result);
                     bool is_epmty=results.empty();
                     result += "\r\n";
                     results.push_back(result);
                     
+                    plogger->info("executed result={}, is_empty={}",result, results.empty());                                                                         
                     // если готов результат после выполнения команды, то надо добавить событие записи в сокет
                     if(is_epmty){
-                        _event.events |= EPOLLOUT;
+                        _event.events  = EPOLLIN | EPOLLRDHUP | EPOLLERR | EPOLLET | EPOLLOUT;
                     }
                     // Send response
                     // это будет делать DoWrite
@@ -127,10 +144,14 @@ void Connection::DoRead()
         }
 
         if ( readed_bytes == 0 ) {
+                              
             plogger->debug("Connection closed: client_socket={}",_socket);
         } else if (errno != EAGAIN && errno != EWOULDBLOCK){
+            plogger->debug("Parse complete but readed_bytes={} >0, this is runtime error",readed_bytes);                                                                                            
             throw std::runtime_error(std::string(strerror(errno)));
         }
+                                      
+                                                                                                
     }
     catch ( std::runtime_error& ex ) {
         plogger->error("Failed to process connection on descriptor {}: {}", _socket, ex.what());
@@ -138,7 +159,8 @@ void Connection::DoRead()
     }
 
     // We are done with this connection
-    close(_socket);
+    // в отличие от st_blocking, close не здесь наверное делать
+    //close(client_socket);
 
 }
 
@@ -148,9 +170,11 @@ void Connection::DoRead()
 // See Connection.h
 void Connection::DoWrite() {
     // здесь действуем по рекомендациям, которые были сделаны на лекции
+                                                        
     assert(!results.empty());
     size_t osize = std::min(results.size(), size_t(64));
     struct iovec vecs[osize];
+    
     try {
         auto result_it = results.begin();
         for(size_t i = 0; i < osize; i++){
@@ -176,19 +200,45 @@ void Connection::DoWrite() {
             if (written_bytes < (*result_it).size()) {
                 break;
             }
+                                                       
+                                                         
+        
             written_bytes -= (*result_it).size();
             result_it++;
+                                             
+        
+                                                                                                                                                                 
+                                                                                                                                         
+                                                                                                       
+    
+        
+                                               
+                                                              
+                                                                      
+                                                                                                                                                                
+                                  
+                                     
+                                                  
+                                        
+                 
+                  
+         
         }
         results.erase(results.begin(), result_it);
         if (results.empty()) {
-            _event.events ^= EPOLLOUT;
+            _event.events  = EPOLLIN | EPOLLRDHUP | EPOLLERR | EPOLLET;
+        }
+        else{
+            _event.events = EPOLLIN | EPOLLRDHUP | EPOLLERR | EPOLLET | EPOLLOUT;
         }
     } catch (std::runtime_error &ex) {
         plogger->error("Failed to writing to connection on descriptor {}: {} \n", _socket, ex.what());
         is_alive = false;
     }
+         plogger->info("end   DoWrite(): socket={}, results.size()={}, written_bytes={}", _socket, results.size(), written_bytes);                                                                                                                        
 }
 
 } // namespace STnonblock
 } // namespace Network
 } // namespace Afina
+
